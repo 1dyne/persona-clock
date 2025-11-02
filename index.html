@@ -59,7 +59,6 @@
             const [newEndMinute, setNewEndMinute] = useState('');
             const [newPersona, setNewPersona] = useState('');
             const [newGoal, setNewGoal] = useState('');
-            const [editingIndex, setEditingIndex] = useState(null);
 
             const colorPresets = [
                 '#6366f1', '#8b5cf6', '#ec4899', '#ef4444',
@@ -195,18 +194,9 @@
                         goal: newGoal
                     };
                     
-                    if (editingIndex !== null) {
-                        const updated = [...schedule];
-                        updated[editingIndex] = newItem;
-                        setSchedule(updated.sort((a, b) => 
-                            (a.startHour * 60 + a.startMinute) - (b.startHour * 60 + b.startMinute)
-                        ));
-                        setEditingIndex(null);
-                    } else {
-                        setSchedule([...schedule, newItem].sort((a, b) => 
-                            (a.startHour * 60 + a.startMinute) - (b.startHour * 60 + b.startMinute)
-                        ));
-                    }
+                    setSchedule([...schedule, newItem].sort((a, b) => 
+                        (a.startHour * 60 + a.startMinute) - (b.startHour * 60 + b.startMinute)
+                    ));
                     
                     setNewStartHour(9);
                     setNewStartMinute(0);
@@ -215,17 +205,6 @@
                     setNewPersona('');
                     setNewGoal('');
                 }
-            };
-
-            const editScheduleItem = (index) => {
-                const item = schedule[index];
-                setNewStartHour(item.startHour);
-                setNewStartMinute(item.startMinute);
-                setNewEndHour(item.endHour !== null ? item.endHour : '');
-                setNewEndMinute(item.endMinute !== null ? item.endMinute : '');
-                setNewPersona(item.personaName);
-                setNewGoal(item.goal);
-                setEditingIndex(index);
             };
 
             const removeScheduleItem = (index) => {
@@ -723,7 +702,7 @@
                                                     fontWeight: '600'
                                                 }}
                                             >
-                                                {editingIndex !== null ? '일정 수정' : '일정 추가'}
+                                                일정 추가
                                             </button>
                                         </div>
 
@@ -756,20 +735,6 @@
                                                             <div style={{ marginTop: '4px' }}>{seg.personaName}</div>
                                                             {seg.goal && <div style={{ fontSize: '12px', color: currentTheme.textMuted, marginTop: '2px' }}>{seg.goal}</div>}
                                                         </div>
-                                                        <button
-                                                            onClick={() => editScheduleItem(i)}
-                                                            style={{ 
-                                                                background: 'transparent',
-                                                                border: 'none',
-                                                                cursor: 'pointer',
-                                                                color: currentTheme.text,
-                                                                padding: '5px',
-                                                                display: 'flex',
-                                                                alignItems: 'center'
-                                                            }}
-                                                        >
-                                                            <EditIcon />
-                                                        </button>
                                                         <button
                                                             onClick={() => removeScheduleItem(i)}
                                                             style={{ 
