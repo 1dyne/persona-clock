@@ -723,7 +723,7 @@
                                                     fontWeight: '600'
                                                 }}
                                             >
-                                                일정 추가
+                                                {editingIndex !== null ? '일정 수정' : '일정 추가'}
                                             </button>
                                         </div>
 
@@ -756,6 +756,20 @@
                                                             <div style={{ marginTop: '4px' }}>{seg.personaName}</div>
                                                             {seg.goal && <div style={{ fontSize: '12px', color: currentTheme.textMuted, marginTop: '2px' }}>{seg.goal}</div>}
                                                         </div>
+                                                        <button
+                                                            onClick={() => editScheduleItem(i)}
+                                                            style={{ 
+                                                                background: 'transparent',
+                                                                border: 'none',
+                                                                cursor: 'pointer',
+                                                                color: currentTheme.textMuted,
+                                                                padding: '5px',
+                                                                display: 'flex',
+                                                                alignItems: 'center'
+                                                            }}
+                                                        >
+                                                            <EditIcon />
+                                                        </button>
                                                         <button
                                                             onClick={() => removeScheduleItem(i)}
                                                             style={{ 
