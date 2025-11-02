@@ -59,6 +59,7 @@
             const [newEndMinute, setNewEndMinute] = useState('');
             const [newPersona, setNewPersona] = useState('');
             const [newGoal, setNewGoal] = useState('');
+            const [editingIndex, setEditingIndex] = useState(null);
 
             const colorPresets = [
                 '#6366f1', '#8b5cf6', '#ec4899', '#ef4444',
@@ -194,9 +195,18 @@
                         goal: newGoal
                     };
                     
-                    setSchedule([...schedule, newItem].sort((a, b) => 
-                        (a.startHour * 60 + a.startMinute) - (b.startHour * 60 + b.startMinute)
-                    ));
+                    if (editingIndex !== null) {
+                        const updated = [...schedule];
+                        updated[editingIndex] = newItem;
+                        setSchedule(updated.sort((a, b) => 
+                            (a.startHour * 60 + a.startMinute) - (b.startHour * 60 + b.startMinute)
+                        ));
+                        setEditingIndex(null);
+                    } else {
+                        setSchedule([...schedule, newItem].sort((a, b) => 
+                            (a.startHour * 60 + a.startMinute) - (b.startHour * 60 + b.startMinute)
+                        ));
+                    }
                     
                     setNewStartHour(9);
                     setNewStartMinute(0);
@@ -207,16 +217,25 @@
                 }
             };
 
+            const editScheduleItem = (index) => {
+                const item = schedule[index];
+                setNewStartHour(item.startHour);
+                setNewStartMinute(item.startMinute);
+                setNewEndHour(item.endHour !== null ? item.endHour : '');
+                setNewEndMinute(item.endMinute !== null ? item.endMinute : '');
+                setNewPersona(item.personaName);
+                setNewGoal(item.goal);
+                setEditingIndex(index);
+            };
+
             const removeScheduleItem = (index) => {
                 setSchedule(schedule.filter((_, i) => i !== index));
             };
 
             const SettingsIcon = () => (
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
                     <circle cx="12" cy="12" r="3"/>
-                    <path d="M12 1v6m0 6v6"/>
-                    <path d="m4.93 4.93 4.24 4.24m5.66 5.66 4.24 4.24"/>
-                    <path d="m19.07 4.93-4.24 4.24m-5.66 5.66-4.24 4.24"/>
                 </svg>
             );
 
@@ -607,7 +626,7 @@
                                                             color: currentTheme.text
                                                         }}
                                                     >
-                                                        {[0, 15, 30, 45].map(m => (
+                                                        {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m => (
                                                             <option key={m} value={m} style={{ background: '#fff', color: '#000' }}>{String(m).padStart(2, '0')}분</option>
                                                         ))}
                                                     </select>
@@ -645,7 +664,7 @@
                                                         }}
                                                     >
                                                         <option value="" style={{ background: '#fff', color: '#000' }}>자동</option>
-                                                        {[0, 15, 30, 45].map(m => (
+                                                        {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(m => (
                                                             <option key={m} value={m} style={{ background: '#fff', color: '#000' }}>{String(m).padStart(2, '0')}분</option>
                                                         ))}
                                                     </select>
@@ -704,7 +723,7 @@
                                                     fontWeight: '600'
                                                 }}
                                             >
-                                                일정 추가
+                                                {editingIndex !== null ? '일정 수정' : '일정 추가'}
                                             </button>
                                         </div>
 
@@ -737,6 +756,20 @@
                                                             <div style={{ marginTop: '4px' }}>{seg.personaName}</div>
                                                             {seg.goal && <div style={{ fontSize: '12px', color: currentTheme.textMuted, marginTop: '2px' }}>{seg.goal}</div>}
                                                         </div>
+                                                        <button
+                                                            onClick={() => editScheduleItem(i)}
+                                                            style={{ 
+                                                                background: 'transparent',
+                                                                border: 'none',
+                                                                cursor: 'pointer',
+                                                                color: currentTheme.text,
+                                                                padding: '5px',
+                                                                display: 'flex',
+                                                                alignItems: 'center'
+                                                            }}
+                                                        >
+                                                            <EditIcon />
+                                                        </button>
                                                         <button
                                                             onClick={() => removeScheduleItem(i)}
                                                             style={{ 
