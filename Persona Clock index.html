@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Persona Clock</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+        }
+        #root {
+            width: 100%;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const PersonaClock = () => {
+            const [currentTime, setCurrentTime] = useState(new Date());
+            const [showSettings, setShowSettings] = useState(false);
+            const [activeTab, setActiveTab] = useState('personas');
+            const [resetHour, setResetHour] = useState(5);
+            const [theme, setTheme] = useState('space');
+            const [personas, setPersonas] = useState([
+                { name: 'AI Researcher', color: '#6366f1' },
+                { name: 'Jurist', color: '#8b5cf6' },
+                { name: 'Wellness', color: '#10b981' },
+                { name: 'Operator', color: '#f59e0b' },
+                { name: 'Builder', color: '#ef4444' },
+                { name: 'Creator', color: '#ec4899' },
+                { name: 'Life', color: '#06b6d4' },
+                { name: 'Polyglot', color: '#84cc16' },
+                { name: 'Wealth Architect', color: '#14b8a6' }
+            ]);
+            const [schedule, setSchedule] = useState([
+                { startHour: 9, startMinute: 0, endHour: null, endMinute: null, personaName: 'AI Researcher', goal: '논문 2개 읽기' },
+                { startHour: 12, startMinute: 0, endHour: null, endMinute: null, personaName: 'Wellness', goal: '1시간 운동' },
+                { startHour: 15, startMinute: 0, endHour: null, endMinute: null, personaName: 'Builder', goal: '' },
+                { startHour: 18, startMinute: 0, endHour: null, endMinute: null, personaName: 'Life', goal: '' }
+            ]);
+            const [newPersonaName, setNewPersonaName] = useState('');
+            const [newPersonaColor, setNewPersonaColor] = useState('#6366f1');
+            const [showColorPicker, setShowColorPicker] = useState(false);
+            
+            const [newStartHour, setNewStartHour] = useState(9);
+            const [newStartMinute, setNewStartMinute] = useState(0);
+            const [newEndHour, setNewEndHour] = useState('');
+            const [newEndMinute, setNewEndMinute] = useState('');
+            const [newPersona, setNewPersona] = useState('');
+            const [newGoal, setNewGoal] = useState('');
+
+            const colorPresets = [
+                '#6366f1', '#8b5cf6', '#ec4899', '#ef4444',
+                '#f59e0b', '#84cc16', '#10b981', '#14b8a6',
+                '#06b6d4', '#3b82f6', '#6366f1', '#a855f7'
+            ];
+
+            const themes = {
+                space: {
+                    bg: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
+                    text: '#f1f5f9',
+                    textMuted: '#94a3b8',
+                    cardBg: 'rgba(255,255,255,0.05)',
+                    border: 'rgba(255,255,255,0.1)',
+                    clockBg: '#1f2937',
+                    clockLine: '#4b5563'
+                },
+                dark: {
+                    bg: 'linear-gradient(135deg, #18181b 0%, #27272a 100%)',
+                    text: '#fafafa',
+                    textMuted: '#a1a1aa',
+                    cardBg: 'rgba(255,255,255,0.03)',
+                    border: 'rgba(255,255,255,0.08)',
+                    clockBg: '#3f3f46',
+                    clockLine: '#71717a'
+                },
+                light: {
+                    bg: 'linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%)',
+                    text: '#18181b',
+                    textMuted: '#71717a',
+                    cardBg: 'rgba(0,0,0,0.02)',
+                    border: 'rgba(0,0,0,0.1)',
+                    clockBg: '#e5e5e5',
+                    clockLine: '#a1a1aa'
+                }
+            };
+
+            const themeOptions = [
+                { key: 'light', label: '라이트', icon: '☀️' },
+                { key: 'dark', label: '다크', icon: '🌙' },
+                { key: 'space', label: '우주', icon: '✨' }
+            ];
+
+            const currentTheme = themes[theme];
+
+            useEffect(() => {
+                const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+                return () => clearInterval(timer);
+            }, []);
+
+            useEffect(() => {
+                const saved = localStorage.getItem('personaClock');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    setPersonas(data.personas || personas);
+                    setSchedule(data.schedule || schedule);
+                    setTheme(data.theme || theme);
+                    setResetHour(data.resetHour || resetHour);
+                }
+            }, []);
+
+            useEffect(() => {
+                localStorage.setItem('personaClock', JSON.stringify({
+                    personas,
+                    schedule,
+                    theme,
+                    resetHour
+                }));
+            }, [personas, schedule, theme, resetHour]);
+
+            const getScheduleWithEndTimes = () => {
+                const sorted = [...schedule].sort((a, b) => 
+                    (a.startHour * 60 + a.startMinute) - (b.startHour * 60 + b.startMinute)
+                );
+                
+                return sorted.map((seg, i) => {
+                    const next = sorted[i + 1];
+                    const endHour = seg.endHour !== null ? seg.endHour : (next ? next.startHour : 24);
+                    const endMinute = seg.endMinute !== null ? seg.endMinute : (next ? next.startMinute : 0);
+                    
+                    return {
+                        ...seg,
+                        calculatedEndHour: endHour,
+                        calculatedEndMinute: endMinute
+                    };
+                });
+            };
+
+            const getCurrentSegment = () => {
+                const now = currentTime.getHours() * 60 + currentTime.getMinutes();
+                const scheduleWithEnd = getScheduleWithEndTimes();
+                
+                for (let seg of scheduleWithEnd) {
+                    const startMinutes = seg.startHour * 60 + seg.startMinute;
+                    const endMinutes = seg.calculatedEndHour * 60 + seg.calculatedEndMinute;
+                    
+                    if (now >= startMinutes && now < endMinutes) {
+                        const persona = personas.find(p => p.name === seg.personaName);
+                        const remaining = endMinutes - now;
+                        return {
+                            persona: persona || { name: seg.personaName, color: '#6b7280' },
+                            goal: seg.goal,
+                            remaining,
+                            startMinutes,
+                            endMinutes
+                        };
+                    }
+                }
+                return null;
+            };
+
+            const addPersona = () => {
+                if (newPersonaName.trim()) {
+                    setPersonas([...personas, { name: newPersonaName, color: newPersonaColor }]);
+                    setNewPersonaName('');
+                    setNewPersonaColor('#6366f1');
+                    setShowColorPicker(false);
+                }
+            };
+
+            const removePersona = (index) => {
+                setPersonas(personas.filter((_, i) => i !== index));
+            };
+
+            const addScheduleItem = () => {
+                if (newPersona) {
+                    const newItem = {
+                        startHour: newStartHour,
+                        startMinute: newStartMinute,
+                        endHour: newEndHour === '' ? null : parseInt(newEndHour),
+                        endMinute: newEndMinute === '' ? null : parseInt(newEndMinute),
+                        personaName: newPersona,
+                        goal: newGoal
+                    };
+                    
+                    setSchedule([...schedule, newItem].sort((a, b) => 
+                        (a.startHour * 60 + a.startMinute) - (b.startHour * 60 + b.startMinute)
+                    ));
+                    
+                    setNewStartHour(9);
+                    setNewStartMinute(0);
+                    setNewEndHour('');
+                    setNewEndMinute('');
+                    setNewPersona('');
+                    setNewGoal('');
+                }
+            };
+
+            const removeScheduleItem = (index) => {
+                setSchedule(schedule.filter((_, i) => i !== index));
+            };
+
+            const SettingsIcon = () => (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M12 1v6m0 6v6m0-18a11 11 0 0 1 0 18m0-18a11 11 0 0 0 0 18"/>
+                </svg>
+            );
+
+            const PlusIcon = () => (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+            );
+
+            const XIcon = () => (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"/>
+                    <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            );
+
+            const PaletteIcon = () => (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="13.5" cy="6.5" r=".5"/>
+                    <circle cx="17.5" cy="10.5" r=".5"/>
+                    <circle cx="8.5" cy="7.5" r=".5"/>
+                    <circle cx="6.5" cy="12.5" r=".5"/>
+                    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/>
+                </svg>
+            );
+
+            const drawClock = () => {
+                const size = 340;
+                const center = size / 2;
+                const outerRadius = size / 2 - 30;
+                const innerRadius = size / 3;
+                const currentSegment = getCurrentSegment();
+                const scheduleWithEnd = getScheduleWithEndTimes();
+
+                const elements = [];
+
+                elements.push(
+                    <circle key="outer" cx={center} cy={center} r={outerRadius} fill="none" stroke={currentTheme.clockBg} strokeWidth="1" />,
+                    <circle key="inner" cx={center} cy={center} r={innerRadius} fill="none" stroke={currentTheme.clockBg} strokeWidth="1" />
+                );
+
+                for (let i = 0; i < 24; i++) {
+                    const angle = (i * 15 - 90) * Math.PI / 180;
+                    const x1 = center + (outerRadius - 10) * Math.cos(angle);
+                    const y1 = center + (outerRadius - 10) * Math.sin(angle);
+                    const x2 = center + outerRadius * Math.cos(angle);
+                    const y2 = center + outerRadius * Math.sin(angle);
+                    const textX = center + (outerRadius + 15) * Math.cos(angle);
+                    const textY = center + (outerRadius + 15) * Math.sin(angle);
+                    
+                    elements.push(
+                        <g key={`hour-${i}`}>
+                            <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={currentTheme.clockLine} strokeWidth="1" />
+                            <text x={textX} y={textY} textAnchor="middle" dominantBaseline="middle" fill={currentTheme.textMuted} fontSize="11">
+                                {i}
+                            </text>
+                        </g>
+                    );
+                }
+
+                scheduleWithEnd.forEach((seg, i) => {
+                    const startAngle = ((seg.startHour + seg.startMinute / 60) * 15 - 90) * Math.PI / 180;
+                    const endAngle = ((seg.calculatedEndHour + seg.calculatedEndMinute / 60) * 15 - 90) * Math.PI / 180;
+                    
+                    const persona = personas.find(p => p.name === seg.personaName);
+                    const color = persona?.color || '#6b7280';
+                    const isActive = currentSegment && seg.personaName === currentSegment.persona.name;
+
+                    const x1 = center + innerRadius * Math.cos(startAngle);
+                    const y1 = center + innerRadius * Math.sin(startAngle);
+                    const x2 = center + outerRadius * Math.cos(startAngle);
+                    const y2 = center + outerRadius * Math.sin(startAngle);
+                    const x3 = center + outerRadius * Math.cos(endAngle);
+                    const y3 = center + outerRadius * Math.sin(endAngle);
+                    const x4 = center + innerRadius * Math.cos(endAngle);
+                    const y4 = center + innerRadius * Math.sin(endAngle);
+
+                    const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
+
+                    elements.push(
+                        <path
+                            key={`seg-${i}`}
+                            d={`M ${x1} ${y1} L ${x2} ${y2} A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${x3} ${y3} L ${x4} ${y4} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x1} ${y1}`}
+                            fill={color}
+                            opacity={isActive ? 1 : 0.6}
+                            stroke={isActive ? (theme === 'light' ? '#000' : '#fff') : 'none'}
+                            strokeWidth={isActive ? 3 : 0}
+                            style={{
+                                filter: isActive ? `drop-shadow(0 0 8px ${color})` : 'none'
+                            }}
+                        />
+                    );
+                });
+
+                const hour = currentTime.getHours() + currentTime.getMinutes() / 60;
+                const angle = (hour * 15 - 90) * Math.PI / 180;
+                const x = center + (outerRadius - 5) * Math.cos(angle);
+                const y = center + (outerRadius - 5) * Math.sin(angle);
+                const pointerColor = theme === 'light' ? '#000' : '#fff';
+                
+                elements.push(
+                    <g key="pointer">
+                        <line x1={center} y1={center} x2={x} y2={y} stroke={pointerColor} strokeWidth="3" />
+                        <circle cx={x} cy={y} r="6" fill={pointerColor} />
+                        <circle cx={center} cy={center} r="8" fill={pointerColor} />
+                    </g>
+                );
+
+                return <svg width={size} height={size} style={{ margin: '20px auto', display: 'block' }}>{elements}</svg>;
+            };
+
+            const current = getCurrentSegment();
+            const hours = current ? Math.floor(current.remaining / 60) : 0;
+            const minutes = current ? current.remaining % 60 : 0;
+
+            return (
+                <div style={{ 
+                    background: currentTheme.bg, 
+                    minHeight: '100vh',
+                    color: currentTheme.text,
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    padding: '20px'
+                }}>
+                    <div style={{ maxWidth: '500px', margin: '0 auto' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h1 style={{ fontSize: '24px', fontWeight: '600', margin: 0 }}>Persona Clock</h1>
+                            <button 
+                                onClick={() => setShowSettings(!showSettings)}
+                                style={{ 
+                                    background: currentTheme.cardBg, 
+                                    border: 'none', 
+                                    padding: '10px', 
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    color: currentTheme.text,
+                                    display: 'flex',
+                                    alignItems: 'center'
+                                }}
+                            >
+                                <SettingsIcon />
+                            </button>
+                        </div>
+
+                        {!showSettings ? (
+                            <>
+                                <div style={{ textAlign: 'center', fontSize: '32px', fontWeight: '600', marginBottom: '10px' }}>
+                                    {currentTime.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                                </div>
+
+                                {drawClock()}
+
+                                {current && (
+                                    <div style={{ 
+                                        background: currentTheme.cardBg, 
+                                        padding: '20px', 
+                                        borderRadius: '12px',
+                                        marginTop: '20px',
+                                        border: `2px solid ${current.persona.color}`
+                                    }}>
+                                        <div style={{ fontSize: '28px', fontWeight: '600', marginBottom: '10px', color: current.persona.color }}>
+                                            {current.persona.name}
+                                        </div>
+                                        {current.goal && (
+                                            <div style={{ fontSize: '16px', marginBottom: '10px', color: currentTheme.textMuted }}>
+                                                🎯 {current.goal}
+                                            </div>
+                                        )}
+                                        <div style={{ fontSize: '20px', color: currentTheme.textMuted }}>
+                                            ⏱️ {hours > 0 ? `${hours}시간 ` : ''}{minutes}분 남음
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div style={{ marginTop: '20px' }}>
+                                    <div style={{ fontSize: '14px', color: currentTheme.textMuted, marginBottom: '10px' }}>Today's Flow</div>
+                                    {getScheduleWithEndTimes().map((seg, i) => {
+                                        const persona = personas.find(p => p.name === seg.personaName);
+                                        const color = persona?.color || '#6b7280';
+                                        const isActive = current && seg.personaName === current.persona.name;
+                                        
+                                        return (
+                                            <div key={i} style={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                gap: '10px',
+                                                padding: '8px',
+                                                background: isActive ? currentTheme.cardBg : 'transparent',
+                                                borderRadius: '6px',
+                                                marginBottom: '4px'
+                                            }}>
+                                                <div style={{ 
+                                                    width: '12px', 
+                                                    height: '12px', 
+                                                    borderRadius: '50%', 
+                                                    background: color,
+                                                    flexShrink: 0
+                                                }} />
+                                                <div style={{ fontSize: '14px', color: isActive ? currentTheme.text : currentTheme.textMuted }}>
+                                                    {String(seg.startHour).padStart(2, '0')}:{String(seg.startMinute).padStart(2, '0')} - {String(seg.calculatedEndHour).padStart(2, '0')}:{String(seg.calculatedEndMinute).padStart(2, '0')} {seg.personaName}
+                                                    {seg.goal && <span style={{ color: currentTheme.textMuted }}> • {seg.goal}</span>}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </>
+                        ) : (
+                            <div>
+                                <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: `1px solid ${currentTheme.border}` }}>
+                                    {[
+                                        { key: 'personas', label: '페르소나' },
+                                        { key: 'schedule', label: '일정' },
+                                        { key: 'theme', label: '테마' }
+                                    ].map(tab => (
+                                        <button
+                                            key={tab.key}
+                                            onClick={() => setActiveTab(tab.key)}
+                                            style={{
+                                                padding: '12px 20px',
+                                                background: 'transparent',
+                                                border: 'none',
+                                                borderBottom: activeTab === tab.key ? `2px solid #6366f1` : '2px solid transparent',
+                                                cursor: 'pointer',
+                                                color: activeTab === tab.key ? currentTheme.text : currentTheme.textMuted,
+                                                fontWeight: activeTab === tab.key ? '600' : 'normal',
+                                                fontSize: '14px'
+                                            }}
+                                        >
+                                            {tab.label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {activeTab === 'personas' && (
+                                    <div>
+                                        <h3 style={{ fontSize: '18px', marginBottom: '15px', marginTop: 0 }}>페르소나 관리</h3>
+                                        <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
+                                            <input
+                                                type="text"
+                                                value={newPersonaName}
+                                                onChange={(e) => setNewPersonaName(e.target.value)}
+                                                placeholder="페르소나 이름"
+                                                style={{ 
+                                                    flex: 1,
+                                                    padding: '10px',
+                                                    background: currentTheme.cardBg,
+                                                    border: `1px solid ${currentTheme.border}`,
+                                                    borderRadius: '6px',
+                                                    color: currentTheme.text
+                                                }}
+                                            />
+                                            <button
+                                                onClick={() => setShowColorPicker(!showColorPicker)}
+                                                style={{ 
+                                                    padding: '10px',
+                                                    background: newPersonaColor,
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    width: '50px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center'
+                                                }}
+                                            >
+                                                <PaletteIcon />
+                                            </button>
+                                            <button
+                                                onClick={addPersona}
+                                                style={{ 
+                                                    padding: '10px',
+                                                    background: '#6366f1',
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    color: '#fff',
+                                                    display: 'flex',
+                                                    alignItems: 'center'
+                                                }}
+                                            >
+                                                <PlusIcon />
+                                            </button>
+                                        </div>
+
+                                        {showColorPicker && (
+                                            <div style={{ 
+                                                display: 'grid', 
+                                                gridTemplateColumns: 'repeat(6, 1fr)', 
+                                                gap: '8px',
+                                                marginBottom: '15px',
+                                                padding: '12px',
+                                                background: currentTheme.cardBg,
+                                                borderRadius: '8px'
+                                            }}>
+                                                {colorPresets.map(color => (
+                                                    <button
+                                                        key={color}
+                                                        onClick={() => {
+                                                            setNewPersonaColor(color);
+                                                            setShowColorPicker(false);
+                                                        }}
+                                                        style={{
+                                                            width: '40px',
+                                                            height: '40px',
+                                                            background: color,
+                                                            border: newPersonaColor === color ? '3px solid #fff' : 'none',
+                                                            borderRadius: '8px',
+                                                            cursor: 'pointer'
+                                                        }}
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
+                                        
+                                        {personas.map((persona, i) => (
+                                            <div key={i} style={{ 
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '10px',
+                                                padding: '10px',
+                                                background: currentTheme.cardBg,
+                                                borderRadius: '6px',
+                                                marginBottom: '8px'
+                                            }}>
+                                                <div style={{ 
+                                                    width: '20px',
+                                                    height: '20px',
+                                                    borderRadius: '50%',
+                                                    background: persona.color
+                                                }} />
+                                                <div style={{ flex: 1 }}>{persona.name}</div>
+                                                <button
+                                                    onClick={() => removePersona(i)}
+                                                    style={{ 
+                                                        background: 'transparent',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                        color: '#ef4444',
+                                                        padding: '5px',
+                                                        display: 'flex',
+                                                        alignItems: 'center'
+                                                    }}
+                                                >
+                                                    <XIcon />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {activeTab === 'schedule' && (
+                                    <div>
+                                        <h3 style={{ fontSize: '18px', marginBottom: '15px', marginTop: 0 }}>오늘 일정</h3>
+                                        
+                                        <div style={{ 
+                                            background: currentTheme.cardBg, 
+                                            padding: '15px', 
+                                            borderRadius: '8px',
+                                            marginBottom: '15px'
+                                        }}>
+                                            <div style={{ marginBottom: '10px' }}>
+                                                <label style={{ fontSize: '12px', color: currentTheme.textMuted, display: 'block', marginBottom: '5px' }}>시작 시간</label>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                                    <select
+                                                        value={newStartHour}
+                                                        onChange={(e) => setNewStartHour(parseInt(e.target.value))}
+                                                        style={{
+                                                            padding: '8px',
+                                                            background: currentTheme.cardBg,
+                                                            border: `1px solid ${currentTheme.border}`,
+                                                            borderRadius: '6px',
+                                                            color: currentTheme.text
+                                                        }}
+                                                    >
+                                                        {[...Array(24)].map((_, i) => (
+                                                            <option key={i} value={i} style={{ background: '#fff', color: '#000' }}>{String(i).padStart(2, '0')}시</option>
+                                                        ))}
+                                                    </select>
+                                                    <select
+                                                        value={newStartMinute}
+                                                        onChange={(e) => setNewStartMinute(parseInt(e.target.value))}
+                                                        style={{
+                                                            padding: '8px',
+                                                            background: currentTheme.cardBg,
+                                                            border: `1px solid ${currentTheme.border}`,
+                                                            borderRadius: '6px',
+                                                            color: currentTheme.text
+                                                        }}
+                                                    >
+                                                        {[0, 15, 30, 45].map(m => (
+                                                            <option key={m} value={m} style={{ background: '#fff', color: '#000' }}>{String(m).padStart(2, '0')}분</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ marginBottom: '10px' }}>
+                                                <label style={{ fontSize: '12px', color: currentTheme.textMuted, display: 'block', marginBottom: '5px' }}>종료 시간 (선택)</label>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                                    <select
+                                                        value={newEndHour}
+                                                        onChange={(e) => setNewEndHour(e.target.value)}
+                                                        style={{
+                                                            padding: '8px',
+                                                            background: currentTheme.cardBg,
+                                                            border: `1px solid ${currentTheme.border}`,
+                                                            borderRadius: '6px',
+                                                            color: currentTheme.text
+                                                        }}
+                                                    >
+                                                        <option value="" style={{ background: '#fff', color: '#000' }}>자동</option>
+                                                        {[...Array(24)].map((_, i) => (
+                                                            <option key={i} value={i} style={{ background: '#fff', color: '#000' }}>{String(i).padStart(2, '0')}시</option>
+                                                        ))}
+                                                    </select>
+                                                    <select
+                                                        value={newEndMinute}
+                                                        onChange={(e) => setNewEndMinute(e.target.value)}
+                                                        style={{
+                                                            padding: '8px',
+                                                            background: currentTheme.cardBg,
+                                                            border: `1px solid ${currentTheme.border}`,
+                                                            borderRadius: '6px',
+                                                            color: currentTheme.text
+                                                        }}
+                                                    >
+                                                        <option value="" style={{ background: '#fff', color: '#000' }}>자동</option>
+                                                        {[0, 15, 30, 45].map(m => (
+                                                            <option key={m} value={m} style={{ background: '#fff', color: '#000' }}>{String(m).padStart(2, '0')}분</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div style={{ marginBottom: '10px' }}>
+                                                <label style={{ fontSize: '12px', color: currentTheme.textMuted, display: 'block', marginBottom: '5px' }}>페르소나</label>
+                                                <select
+                                                    value={newPersona}
+                                                    onChange={(e) => setNewPersona(e.target.value)}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '8px',
+                                                        background: currentTheme.cardBg,
+                                                        border: `1px solid ${currentTheme.border}`,
+                                                        borderRadius: '6px',
+                                                        color: currentTheme.text
+                                                    }}
+                                                >
+                                                    <option value="" style={{ background: '#fff', color: '#000' }}>선택하세요</option>
+                                                    {personas.map((p, i) => (
+                                                        <option key={i} value={p.name} style={{ background: '#fff', color: '#000' }}>{p.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div style={{ marginBottom: '10px' }}>
+                                                <label style={{ fontSize: '12px', color: currentTheme.textMuted, display: 'block', marginBottom: '5px' }}>목표 (선택)</label>
+                                                <input
+                                                    type="text"
+                                                    value={newGoal}
+                                                    onChange={(e) => setNewGoal(e.target.value)}
+                                                    placeholder="예: 논문 2개 읽기"
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '8px',
+                                                        background: currentTheme.cardBg,
+                                                        border: `1px solid ${currentTheme.border}`,
+                                                        borderRadius: '6px',
+                                                        color: currentTheme.text
+                                                    }}
+                                                />
+                                            </div>
+
+                                            <button
+                                                onClick={addScheduleItem}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '10px',
+                                                    background: '#6366f1',
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    color: '#fff',
+                                                    fontWeight: '600'
+                                                }}
+                                            >
+                                                일정 추가
+                                            </button>
+                                        </div>
+
+                                        <div>
+                                            {getScheduleWithEndTimes().map((seg, i) => {
+                                                const persona = personas.find(p => p.name === seg.personaName);
+                                                const color = persona?.color || '#6b7280';
+                                                
+                                                return (
+                                                    <div key={i} style={{ 
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '10px',
+                                                        padding: '12px',
+                                                        background: currentTheme.cardBg,
+                                                        borderRadius: '6px',
+                                                        marginBottom: '8px'
+                                                    }}>
+                                                        <div style={{ 
+                                                            width: '16px',
+                                                            height: '16px',
+                                                            borderRadius: '50%',
+                                                            background: color,
+                                                            flexShrink: 0
+                                                        }} />
+                                                        <div style={{ flex: 1, fontSize: '14px' }}>
+                                                            <div style={{ fontWeight: '600' }}>
+                                                                {String(seg.startHour).padStart(2, '0')}:{String(seg.startMinute).padStart(2, '0')} - {String(seg.calculatedEndHour).padStart(2, '0')}:{String(seg.calculatedEndMinute).padStart(2, '0')}
+                                                            </div>
+                                                            <div style={{ marginTop: '4px' }}>{seg.personaName}</div>
+                                                            {seg.goal && <div style={{ fontSize: '12px', color: currentTheme.textMuted, marginTop: '2px' }}>{seg.goal}</div>}
+                                                        </div>
+                                                        <button
+                                                            onClick={() => removeScheduleItem(i)}
+                                                            style={{ 
+                                                                background: 'transparent',
+                                                                border: 'none',
+                                                                cursor: 'pointer',
+                                                                color: '#ef4444',
+                                                                padding: '5px',
+                                                                display: 'flex',
+                                                                alignItems: 'center'
+                                                            }}
+                                                        >
+                                                            <XIcon />
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <div style={{ marginTop: '30px' }}>
+                                            <h3 style={{ fontSize: '18px', marginBottom: '15px' }}>일정 리셋 시간</h3>
+                                            <div style={{ 
+                                                background: currentTheme.cardBg, 
+                                                padding: '15px', 
+                                                borderRadius: '8px'
+                                            }}>
+                                                <div style={{ fontSize: '14px', color: currentTheme.textMuted, marginBottom: '10px' }}>
+                                                    매일 이 시간에 일정표가 초기화됩니다
+                                                </div>
+                                                <select
+                                                    value={resetHour}
+                                                    onChange={(e) => setResetHour(parseInt(e.target.value))}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '10px',
+                                                        background: currentTheme.cardBg,
+                                                        border: `1px solid ${currentTheme.border}`,
+                                                        borderRadius: '6px',
+                                                        color: currentTheme.text,
+                                                        fontSize: '16px'
+                                                    }}
+                                                >
+                                                    {[...Array(24)].map((_, i) => (
+                                                        <option key={i} value={i} style={{ background: '#fff', color: '#000' }}>
+                                                            {String(i).padStart(2, '0')}:00 {i < 12 ? '오전' : '오후'}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeTab === 'theme' && (
+                                    <div>
+                                        <h3 style={{ fontSize: '18px', marginBottom: '15px', marginTop: 0 }}>테마 선택</h3>
+                                        <div style={{ display: 'flex', gap: '10px' }}>
+                                            {themeOptions.map(t => (
+                                                <button
+                                                    key={t.key}
+                                                    onClick={() => setTheme(t.key)}
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: '16px',
+                                                        background: theme === t.key ? '#6366f1' : currentTheme.cardBg,
+                                                        border: `1px solid ${currentTheme.border}`,
+                                                        borderRadius: '12px',
+                                                        cursor: 'pointer',
+                                                        color: currentTheme.text,
+                                                        fontWeight: theme === t.key ? '600' : 'normal',
+                                                        fontSize: '16px',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        alignItems: 'center',
+                                                        gap: '8px'
+                                                    }}
+                                                >
+                                                    <span style={{ fontSize: '24px' }}>{t.icon}</span>
+                                                    <span>{t.label}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<PersonaClock />, document.getElementById('root'));
+    </script>
+</body>
+</html>
