@@ -78,24 +78,9 @@
             const [showSettings, setShowSettings] = useState(false);
             const [activeTab, setActiveTab] = useState('personas');
             const [resetHour, setResetHour] = useState(5);
-            const [theme, setTheme] = useState('space');
-            const [personas, setPersonas] = useState([
-                { name: 'AI Researcher', color: '#6366f1' },
-                { name: 'Jurist', color: '#8b5cf6' },
-                { name: 'Wellness', color: '#10b981' },
-                { name: 'Operator', color: '#f59e0b' },
-                { name: 'Builder', color: '#ef4444' },
-                { name: 'Creator', color: '#ec4899' },
-                { name: 'Life', color: '#06b6d4' },
-                { name: 'Polyglot', color: '#84cc16' },
-                { name: 'Wealth Architect', color: '#14b8a6' }
-            ]);
-            const [schedule, setSchedule] = useState([
-                { startHour: 9, startMinute: 0, endHour: null, endMinute: null, personaName: 'AI Researcher', goal: '논문 2개 읽기' },
-                { startHour: 12, startMinute: 0, endHour: null, endMinute: null, personaName: 'Wellness', goal: '1시간 운동' },
-                { startHour: 15, startMinute: 0, endHour: null, endMinute: null, personaName: 'Builder', goal: '' },
-                { startHour: 18, startMinute: 0, endHour: null, endMinute: null, personaName: 'Life', goal: '' }
-            ]);
+            const [theme, setTheme] = useState('light');
+            const [personas, setPersonas] = useState([]);
+            const [schedule, setSchedule] = useState([]);
             const [newPersonaName, setNewPersonaName] = useState('');
             const [newPersonaColor, setNewPersonaColor] = useState('#6366f1');
             const [showColorPicker, setShowColorPicker] = useState(false);
@@ -166,7 +151,46 @@
                     setTheme(data.theme || theme);
                     setResetHour(data.resetHour || resetHour);
                 }
+                
+                // 마지막 리셋 날짜 확인
+                const lastReset = localStorage.getItem('lastResetDate');
+                const today = new Date().toDateString();
+                
+                if (lastReset !== today) {
+                    checkAndResetSchedule();
+                }
             }, []);
+
+            useEffect(() => {
+                // 매 분마다 리셋 시간 체크
+                const checkReset = setInterval(() => {
+                    const now = new Date();
+                    const currentHour = now.getHours();
+                    const currentMinute = now.getMinutes();
+                    
+                    if (currentHour === resetHour && currentMinute === 0) {
+                        const lastReset = localStorage.getItem('lastResetDate');
+                        const today = now.toDateString();
+                        
+                        if (lastReset !== today) {
+                            checkAndResetSchedule();
+                        }
+                    }
+                }, 60000); // 1분마다 체크
+                
+                return () => clearInterval(checkReset);
+            }, [resetHour]);
+
+            const checkAndResetSchedule = () => {
+                const now = new Date();
+                const currentHour = now.getHours();
+                
+                // 리셋 시간이 지났는지 확인
+                if (currentHour >= resetHour) {
+                    setSchedule([]);
+                    localStorage.setItem('lastResetDate', now.toDateString());
+                }
+            };
 
             useEffect(() => {
                 localStorage.setItem('personaClock', JSON.stringify({
@@ -280,7 +304,8 @@
             };
 
             const drawClock = () => {
-                const size = 340;
+                const isMobile = window.innerWidth <= 768;
+                const size = isMobile ? Math.min(window.innerWidth - 40, 300) : 340;
                 const center = size / 2;
                 const outerRadius = size / 2 - 30;
                 const innerRadius = size / 3;
@@ -361,7 +386,7 @@
                     </g>
                 );
 
-                return <svg width={size} height={size} style={{ margin: '20px auto', display: 'block' }}>{elements}</svg>;
+                return <svg width={size} height={size} style={{ margin: '20px auto', display: 'block', maxWidth: '100%' }}>{elements}</svg>;
             };
 
             const current = getCurrentSegment();
@@ -372,11 +397,13 @@
                 <div style={{ 
                     background: currentTheme.bg, 
                     minHeight: '100vh',
+                    width: '100%',
                     color: currentTheme.text,
                     fontFamily: 'system-ui, -apple-system, sans-serif',
-                    padding: '20px'
+                    padding: '20px',
+                    boxSizing: 'border-box'
                 }}>
-                    <div style={{ maxWidth: '500px', margin: '0 auto' }}>
+                    <div style={{ maxWidth: '500px', margin: '0 auto', width: '100%' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                             <h1 style={{ fontSize: '24px', fontWeight: '600', margin: 0 }}>Persona Clock</h1>
                             <button 
