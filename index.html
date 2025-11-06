@@ -537,6 +537,79 @@
                                 </div>
 
                                 {drawClock()}
+
+                                {current && (
+                                    <div style={{ 
+                                        background: currentTheme.cardBg, 
+                                        padding: '20px', 
+                                        borderRadius: '12px',
+                                        marginTop: '20px',
+                                        border: `2px solid ${current.persona.color}`
+                                    }}>
+                                        <div style={{ fontSize: '28px', fontWeight: '600', marginBottom: '10px', color: current.persona.color }}>
+                                            {current.persona.name}
+                                        </div>
+                                        {current.goal && (
+                                            <div style={{ fontSize: '16px', marginBottom: '10px', color: currentTheme.textMuted }}>
+                                                🎯 {current.goal}
+                                            </div>
+                                        )}
+                                        <div style={{ fontSize: '20px', color: currentTheme.textMuted }}>
+                                            ⏱️ {hours > 0 ? `${hours}시간 ` : ''}{minutes}분 남음
+                                        </div>
+                                    </div>
+                                )}
+
+                                {schedule.length === 0 && (
+                                    <div style={{ 
+                                        background: currentTheme.cardBg, 
+                                        padding: '30px', 
+                                        borderRadius: '12px',
+                                        marginTop: '20px',
+                                        textAlign: 'center'
+                                    }}>
+                                        <div style={{ fontSize: '20px', marginBottom: '10px' }}>👋</div>
+                                        <div style={{ fontSize: '16px', color: currentTheme.textMuted }}>
+                                            설정에서 페르소나와 일정을 추가해주세요
+                                        </div>
+                                    </div>
+                                )}
+
+                                {schedule.length > 0 && (
+                                    <div style={{ marginTop: '20px' }}>
+                                        <div style={{ fontSize: '14px', color: currentTheme.textMuted, marginBottom: '10px' }}>Today's Flow</div>
+                                        {getScheduleWithEndTimes().map((seg, i) => {
+                                            const persona = personas.find(p => p.name === seg.personaName);
+                                            const color = persona?.color || '#6b7280';
+                                            const isActive = current && seg.personaName === current.persona.name;
+                                            
+                                            return (
+                                                <div key={i} style={{ 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    gap: '10px',
+                                                    padding: '8px',
+                                                    background: isActive ? currentTheme.cardBg : 'transparent',
+                                                    borderRadius: '6px',
+                                                    marginBottom: '4px'
+                                                }}>
+                                                    <div style={{ 
+                                                        width: '12px', 
+                                                        height: '12px', 
+                                                        borderRadius: '50%', 
+                                                        background: color,
+                                                        flexShrink: 0
+                                                    }} />
+                                                    <div style={{ fontSize: '14px', color: isActive ? currentTheme.text : currentTheme.textMuted }}>
+                                                        {String(seg.startHour).padStart(2, '0')}:{String(seg.startMinute).padStart(2, '0')} - {String(seg.calculatedEndHour).padStart(2, '0')}:{String(seg.calculatedEndMinute).padStart(2, '0')} {seg.personaName}
+                                                        {seg.goal && <span style={{ color: currentTheme.textMuted }}> • {seg.goal}</span>}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
                                     <div style={{ 
                                         background: currentTheme.cardBg, 
                                         padding: '20px', 
@@ -611,7 +684,6 @@
                         ) : showStats ? (
                             <div>
                                 <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '20px', marginTop: 0 }}>오늘의 통계</h2>
-                                
                                 {getTodayStats().map((stat, i) => {
                                     const hours = Math.floor(stat.minutes / 60);
                                     const mins = stat.minutes % 60;
