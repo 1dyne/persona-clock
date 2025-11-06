@@ -110,8 +110,6 @@
             const [newGoal, setNewGoal] = useState('');
             const [editingIndex, setEditingIndex] = useState(null);
             const [showStats, setShowStats] = useState(false);
-            const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-            const [notificationMinutes, setNotificationMinutes] = useState(10);
 
             const colorPresets = [
                 '#6366f1', '#8b5cf6', '#ec4899', '#ef4444',
@@ -166,13 +164,12 @@
                 const saved = localStorage.getItem('personaClock');
                 if (saved) {
                     const data = JSON.parse(saved);
-                    setPersonas(data.personas || personas);
-                    setSchedule(data.schedule || schedule);
-                    setTheme(data.theme || theme);
-                    setResetHour(data.resetHour || resetHour);
+                    setPersonas(data.personas || []);
+                    setSchedule(data.schedule || []);
+                    setTheme(data.theme || 'light');
+                    setResetHour(data.resetHour || 5);
                 }
                 
-                // 마지막 리셋 날짜 확인
                 const lastReset = localStorage.getItem('lastResetDate');
                 const today = new Date().toDateString();
                 
@@ -182,7 +179,6 @@
             }, []);
 
             useEffect(() => {
-                // 매 분마다 리셋 시간 체크
                 const checkReset = setInterval(() => {
                     const now = new Date();
                     const currentHour = now.getHours();
@@ -196,7 +192,7 @@
                             checkAndResetSchedule();
                         }
                     }
-                }, 60000); // 1분마다 체크
+                }, 60000);
                 
                 return () => clearInterval(checkReset);
             }, [resetHour]);
@@ -205,7 +201,6 @@
                 const now = new Date();
                 const currentHour = now.getHours();
                 
-                // 리셋 시간이 지났는지 확인
                 if (currentHour >= resetHour) {
                     setSchedule([]);
                     localStorage.setItem('lastResetDate', now.toDateString());
@@ -343,6 +338,45 @@
                 }
             };
 
+            const exportData = () => {
+                const data = {
+                    personas,
+                    schedule,
+                    theme,
+                    resetHour,
+                    exportDate: new Date().toISOString()
+                };
+                
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `persona-clock-backup-${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+            };
+
+            const importData = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    try {
+                        const data = JSON.parse(event.target.result);
+                        if (data.personas) setPersonas(data.personas);
+                        if (data.schedule) setSchedule(data.schedule);
+                        if (data.theme) setTheme(data.theme);
+                        if (data.resetHour !== undefined) setResetHour(data.resetHour);
+                        alert('데이터를 성공적으로 복구했습니다!');
+                    } catch (error) {
+                        alert('파일을 읽는 중 오류가 발생했습니다.');
+                    }
+                };
+                reader.readAsText(file);
+                e.target.value = '';
+            };
+
             const getTodayStats = () => {
                 const scheduleWithEnd = getScheduleWithEndTimes();
                 const stats = {};
@@ -405,7 +439,6 @@
                     const persona = personas.find(p => p.name === seg.personaName);
                     const color = persona?.color || '#6b7280';
                     
-                    // 현재 활성 시간대인지 정확하게 체크
                     const now = currentTime.getHours() * 60 + currentTime.getMinutes();
                     const segStart = seg.startHour * 60 + seg.startMinute;
                     const segEnd = seg.calculatedEndHour * 60 + seg.calculatedEndMinute;
@@ -610,77 +643,6 @@
                                     </div>
                                 )}
                             </div>
-                                    <div style={{ 
-                                        background: currentTheme.cardBg, 
-                                        padding: '20px', 
-                                        borderRadius: '12px',
-                                        marginTop: '20px',
-                                        border: `2px solid ${current.persona.color}`
-                                    }}>
-                                        <div style={{ fontSize: '28px', fontWeight: '600', marginBottom: '10px', color: current.persona.color }}>
-                                            {current.persona.name}
-                                        </div>
-                                        {current.goal && (
-                                            <div style={{ fontSize: '16px', marginBottom: '10px', color: currentTheme.textMuted }}>
-                                                🎯 {current.goal}
-                                            </div>
-                                        )}
-                                        <div style={{ fontSize: '20px', color: currentTheme.textMuted }}>
-                                            ⏱️ {hours > 0 ? `${hours}시간 ` : ''}{minutes}분 남음
-                                        </div>
-                                    </div>
-                                )}
-
-                                {schedule.length === 0 && (
-                                    <div style={{ 
-                                        background: currentTheme.cardBg, 
-                                        padding: '30px', 
-                                        borderRadius: '12px',
-                                        marginTop: '20px',
-                                        textAlign: 'center'
-                                    }}>
-                                        <div style={{ fontSize: '20px', marginBottom: '10px' }}>👋</div>
-                                        <div style={{ fontSize: '16px', color: currentTheme.textMuted }}>
-                                            설정에서 페르소나와 일정을 추가해주세요
-                                        </div>
-                                    </div>
-                                )}
-
-                                {schedule.length > 0 && (
-                                    <div style={{ marginTop: '20px' }}>
-                                        <div style={{ fontSize: '14px', color: currentTheme.textMuted, marginBottom: '10px' }}>Today's Flow</div>
-                                        {getScheduleWithEndTimes().map((seg, i) => {
-                                            const persona = personas.find(p => p.name === seg.personaName);
-                                            const color = persona?.color || '#6b7280';
-                                            const isActive = current && seg.personaName === current.persona.name;
-                                            
-                                            return (
-                                                <div key={i} style={{ 
-                                                    display: 'flex', 
-                                                    alignItems: 'center', 
-                                                    gap: '10px',
-                                                    padding: '8px',
-                                                    background: isActive ? currentTheme.cardBg : 'transparent',
-                                                    borderRadius: '6px',
-                                                    marginBottom: '4px'
-                                                }}>
-                                                    <div style={{ 
-                                                        width: '12px', 
-                                                        height: '12px', 
-                                                        borderRadius: '50%', 
-                                                        background: color,
-                                                        flexShrink: 0
-                                                    }} />
-                                                    <div style={{ fontSize: '14px', color: isActive ? currentTheme.text : currentTheme.textMuted }}>
-                                                        {String(seg.startHour).padStart(2, '0')}:{String(seg.startMinute).padStart(2, '0')} - {String(seg.calculatedEndHour).padStart(2, '0')}:{String(seg.calculatedEndMinute).padStart(2, '0')} {seg.personaName}
-                                                        {seg.goal && <span style={{ color: currentTheme.textMuted }}> • {seg.goal}</span>}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
                         ) : showStats ? (
                             <div>
                                 <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '20px', marginTop: 0 }}>오늘의 통계</h2>
@@ -737,7 +699,6 @@
                                     </div>
                                 )}
                             </div>
-                            </>
                         ) : (
                             <div>
                                 <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: `1px solid ${currentTheme.border}` }}>
