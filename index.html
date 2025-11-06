@@ -674,7 +674,8 @@
                                     {[
                                         { key: 'personas', label: '페르소나' },
                                         { key: 'schedule', label: '일정' },
-                                        { key: 'theme', label: '테마' }
+                                        { key: 'theme', label: '테마' },
+                                        { key: 'backup', label: '백업/복구' }
                                     ].map(tab => (
                                         <button
                                             key={tab.key}
@@ -1075,6 +1076,91 @@
                                                     <span>{t.label}</span>
                                                 </button>
                                             ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeTab === 'backup' && (
+                                    <div>
+                                        <h3 style={{ fontSize: '18px', marginBottom: '15px', marginTop: 0 }}>백업 & 복구</h3>
+                                        
+                                        <div style={{ 
+                                            background: currentTheme.cardBg, 
+                                            padding: '20px', 
+                                            borderRadius: '8px',
+                                            marginBottom: '20px'
+                                        }}>
+                                            <h4 style={{ fontSize: '16px', marginBottom: '10px', marginTop: 0 }}>데이터 백업</h4>
+                                            <p style={{ fontSize: '14px', color: currentTheme.textMuted, marginBottom: '15px' }}>
+                                                현재 설정을 JSON 파일로 저장합니다.<br/>
+                                                다른 기기에서 복구하거나 백업용으로 사용하세요.
+                                            </p>
+                                            <button
+                                                onClick={exportData}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '12px',
+                                                    background: '#6366f1',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    color: '#fff',
+                                                    fontWeight: '600',
+                                                    fontSize: '14px'
+                                                }}
+                                            >
+                                                📦 데이터 백업하기
+                                            </button>
+                                        </div>
+
+                                        <div style={{ 
+                                            background: currentTheme.cardBg, 
+                                            padding: '20px', 
+                                            borderRadius: '8px'
+                                        }}>
+                                            <h4 style={{ fontSize: '16px', marginBottom: '10px', marginTop: 0 }}>데이터 복구</h4>
+                                            <p style={{ fontSize: '14px', color: currentTheme.textMuted, marginBottom: '15px' }}>
+                                                백업한 JSON 파일을 선택하여 데이터를 복구합니다.<br/>
+                                                현재 데이터는 덮어씌워집니다.
+                                            </p>
+                                            <input
+                                                type="file"
+                                                accept=".json"
+                                                onChange={importData}
+                                                style={{ display: 'none' }}
+                                                id="import-file"
+                                            />
+                                            <label
+                                                htmlFor="import-file"
+                                                style={{
+                                                    display: 'block',
+                                                    width: '100%',
+                                                    padding: '12px',
+                                                    background: '#10b981',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    color: '#fff',
+                                                    fontWeight: '600',
+                                                    fontSize: '14px',
+                                                    textAlign: 'center',
+                                                    boxSizing: 'border-box'
+                                                }}
+                                            >
+                                                📂 데이터 복구하기
+                                            </label>
+                                        </div>
+
+                                        <div style={{ 
+                                            marginTop: '20px',
+                                            padding: '15px',
+                                            background: 'rgba(239, 68, 68, 0.1)',
+                                            borderRadius: '8px',
+                                            fontSize: '13px',
+                                            color: currentTheme.textMuted
+                                        }}>
+                                            ⚠️ 백업 파일은 안전한 곳에 보관하세요.<br/>
+                                            복구 시 현재 데이터가 모두 교체됩니다.
                                         </div>
                                     </div>
                                 )}
