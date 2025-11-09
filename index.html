@@ -35,7 +35,7 @@
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // 모든 아이콘 컴포넌트를 먼저 정의
+        // 아이콘 컴포넌트들
         const SettingsIcon = () => (
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
@@ -104,7 +104,21 @@
             const [resetHour, setResetHour] = useState(5);
             const [theme, setTheme] = useState('light');
             const [personas, setPersonas] = useState([]);
-            const [schedule, setSchedule] = useState([]);
+            
+            // 스케줄 모드 관련 상태
+            const [scheduleMode, setScheduleMode] = useState('daily'); // 'daily' or 'weekly'
+            const [dailySchedule, setDailySchedule] = useState([]);
+            const [weeklySchedule, setWeeklySchedule] = useState({
+                monday: [],
+                tuesday: [],
+                wednesday: [],
+                thursday: [],
+                friday: [],
+                saturday: [],
+                sunday: []
+            });
+            const [selectedDay, setSelectedDay] = useState('monday');
+            
             const [newPersonaName, setNewPersonaName] = useState('');
             const [newPersonaColor, setNewPersonaColor] = useState('#6366f1');
             const [showColorPicker, setShowColorPicker] = useState(false);
@@ -123,6 +137,16 @@
                 '#f59e0b', '#84cc16', '#10b981', '#14b8a6',
                 '#06b6d4', '#3b82f6', '#6366f1', '#a855f7'
             ];
+
+            const dayNames = {
+                monday: '월',
+                tuesday: '화',
+                wednesday: '수',
+                thursday: '목',
+                friday: '금',
+                saturday: '토',
+                sunday: '일'
+            };
 
             const themes = {
                 space: {
@@ -162,6 +186,43 @@
 
             const currentTheme = themes[theme];
 
+            // 현재 요일 가져오기
+            const getCurrentDayKey = () => {
+                const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+                return days[new Date().getDay()];
+            };
+
+            // 오늘 표시할 스케줄 가져오기
+            const getTodaySchedule = () => {
+                if (scheduleMode === 'daily') {
+                    return dailySchedule;
+                } else {
+                    const dayKey = getCurrentDayKey();
+                    return weeklySchedule[dayKey] || [];
+                }
+            };
+
+            // 현재 편집 중인 스케줄 가져오기
+            const getCurrentEditingSchedule = () => {
+                if (scheduleMode === 'daily') {
+                    return dailySchedule;
+                } else {
+                    return weeklySchedule[selectedDay] || [];
+                }
+            };
+
+            // 스케줄 업데이트
+            const updateSchedule = (newSchedule) => {
+                if (scheduleMode === 'daily') {
+                    setDailySchedule(newSchedule);
+                } else {
+                    setWeeklySchedule({
+                        ...weeklySchedule,
+                        [selectedDay]: newSchedule
+                    });
+                }
+            };
+
             useEffect(() => {
                 const timer = setInterval(() => setCurrentTime(new Date()), 1000);
                 return () => clearInterval(timer);
@@ -172,7 +233,12 @@
                 if (saved) {
                     const data = JSON.parse(saved);
                     setPersonas(data.personas || []);
-                    setSchedule(data.schedule || []);
+                    setScheduleMode(data.scheduleMode || 'daily');
+                    setDailySchedule(data.dailySchedule || []);
+                    setWeeklySchedule(data.weeklySchedule || {
+                        monday: [], tuesday: [], wednesday: [], thursday: [],
+                        friday: [], saturday: [], sunday: []
+                    });
                     setTheme(data.theme || 'light');
                     setResetHour(data.resetHour || 5);
                 }
@@ -202,14 +268,18 @@
                 }, 60000);
                 
                 return () => clearInterval(checkReset);
-            }, [resetHour]);
+            }, [resetHour, scheduleMode]);
 
             const checkAndResetSchedule = () => {
                 const now = new Date();
                 const currentHour = now.getHours();
                 
                 if (currentHour >= resetHour) {
-                    setSchedule([]);
+                    // 매일 변경 모드일 때만 리셋
+                    if (scheduleMode === 'daily') {
+                        setDailySchedule([]);
+                    }
+                    // 일주일 고정 모드는 리셋하지 않음
                     localStorage.setItem('lastResetDate', now.toDateString());
                 }
             };
@@ -217,13 +287,15 @@
             useEffect(() => {
                 localStorage.setItem('personaClock', JSON.stringify({
                     personas,
-                    schedule,
+                    scheduleMode,
+                    dailySchedule,
+                    weeklySchedule,
                     theme,
                     resetHour
                 }));
-            }, [personas, schedule, theme, resetHour]);
+            }, [personas, scheduleMode, dailySchedule, weeklySchedule, theme, resetHour]);
 
-            const getScheduleWithEndTimes = () => {
+            const getScheduleWithEndTimes = (schedule) => {
                 const sorted = [...schedule].sort((a, b) => 
                     (a.startHour * 60 + a.startMinute) - (b.startHour * 60 + b.startMinute)
                 );
@@ -243,7 +315,8 @@
 
             const getCurrentSegment = () => {
                 const now = currentTime.getHours() * 60 + currentTime.getMinutes();
-                const scheduleWithEnd = getScheduleWithEndTimes();
+                const todaySchedule = getTodaySchedule();
+                const scheduleWithEnd = getScheduleWithEndTimes(todaySchedule);
                 
                 for (let seg of scheduleWithEnd) {
                     const startMinutes = seg.startHour * 60 + seg.startMinute;
@@ -288,15 +361,17 @@
                         goal: newGoal
                     };
                     
+                    const currentSchedule = getCurrentEditingSchedule();
+                    
                     if (editingIndex !== null) {
-                        const updated = [...schedule];
+                        const updated = [...currentSchedule];
                         updated[editingIndex] = newItem;
-                        setSchedule(updated.sort((a, b) => 
+                        updateSchedule(updated.sort((a, b) => 
                             (a.startHour * 60 + a.startMinute) - (b.startHour * 60 + b.startMinute)
                         ));
                         setEditingIndex(null);
                     } else {
-                        setSchedule([...schedule, newItem].sort((a, b) => 
+                        updateSchedule([...currentSchedule, newItem].sort((a, b) => 
                             (a.startHour * 60 + a.startMinute) - (b.startHour * 60 + b.startMinute)
                         ));
                     }
@@ -311,7 +386,8 @@
             };
 
             const editScheduleItem = (index) => {
-                const item = schedule[index];
+                const currentSchedule = getCurrentEditingSchedule();
+                const item = currentSchedule[index];
                 setNewStartHour(item.startHour);
                 setNewStartMinute(item.startMinute);
                 setNewEndHour(item.endHour !== null ? item.endHour : '');
@@ -322,7 +398,8 @@
             };
 
             const removeScheduleItem = (index) => {
-                setSchedule(schedule.filter((_, i) => i !== index));
+                const currentSchedule = getCurrentEditingSchedule();
+                updateSchedule(currentSchedule.filter((_, i) => i !== index));
             };
 
             const captureImage = async () => {
@@ -332,66 +409,132 @@
                     return;
                 }
                 
+                if (typeof html2canvas === 'undefined') {
+                    alert('이미지 캡처 라이브러리를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+                    return;
+                }
+                
                 try {
                     const canvas = await html2canvas(element, {
                         backgroundColor: theme === 'light' ? '#ffffff' : (theme === 'dark' ? '#18181b' : '#0f172a'),
                         scale: 2,
                         logging: false,
-                        useCORS: true
+                        useCORS: true,
+                        allowTaint: true
                     });
                     
+                    try {
+                        const dataUrl = canvas.toDataURL('image/png');
+                        const link = document.createElement('a');
+                        link.download = `persona-clock-${new Date().toISOString().split('T')[0]}.png`;
+                        link.href = dataUrl;
+                        link.click();
+                        return;
+                    } catch (e) {
+                        console.log('dataURL 방식 실패, blob 시도');
+                    }
+                    
                     canvas.toBlob((blob) => {
+                        if (!blob) {
+                            alert('이미지 생성에 실패했습니다.');
+                            return;
+                        }
                         const url = URL.createObjectURL(blob);
                         const link = document.createElement('a');
                         link.download = `persona-clock-${new Date().toISOString().split('T')[0]}.png`;
                         link.href = url;
-                        document.body.appendChild(link);
                         link.click();
-                        document.body.removeChild(link);
-                        URL.revokeObjectURL(url);
-                    });
+                        setTimeout(() => URL.revokeObjectURL(url), 100);
+                    }, 'image/png');
+                    
                 } catch (error) {
                     console.error('Image capture failed:', error);
-                    alert('이미지 저장에 실패했습니다. 다시 시도해주세요.');
+                    alert('이미지 캡처에 실패했습니다. 브라우저에서 직접 열어서 시도해주세요.');
                 }
             };
 
             const exportData = () => {
-                const data = {
-                    personas,
-                    schedule,
-                    theme,
-                    resetHour,
-                    exportDate: new Date().toISOString()
-                };
-                
-                const jsonString = JSON.stringify(data, null, 2);
-                const blob = new Blob([jsonString], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `persona-clock-backup-${new Date().toISOString().split('T')[0]}.json`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
+                try {
+                    const data = {
+                        personas,
+                        scheduleMode,
+                        dailySchedule,
+                        weeklySchedule,
+                        theme,
+                        resetHour,
+                        exportDate: new Date().toISOString()
+                    };
+                    
+                    const jsonString = JSON.stringify(data, null, 2);
+                    
+                    try {
+                        const blob = new Blob([jsonString], { type: 'application/json' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `persona-clock-backup-${new Date().toISOString().split('T')[0]}.json`;
+                        link.click();
+                        setTimeout(() => URL.revokeObjectURL(url), 100);
+                        return;
+                    } catch (e) {
+                        console.log('Blob 방식 실패, dataURL 시도');
+                    }
+                    
+                    const dataUrl = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonString);
+                    const link = document.createElement('a');
+                    link.href = dataUrl;
+                    link.download = `persona-clock-backup-${new Date().toISOString().split('T')[0]}.json`;
+                    link.click();
+                    
+                } catch (error) {
+                    console.error('Export failed:', error);
+                    alert('파일 다운로드에 실패했습니다. 클립보드 복사 버튼을 사용해주세요.');
+                }
             };
 
             const copyBackupData = () => {
-                const data = {
-                    personas,
-                    schedule,
-                    theme,
-                    resetHour,
-                    exportDate: new Date().toISOString()
-                };
-                
-                const jsonString = JSON.stringify(data, null, 2);
-                navigator.clipboard.writeText(jsonString).then(() => {
-                    alert('백업 데이터가 클립보드에 복사되었습니다!');
-                }).catch(() => {
+                try {
+                    const data = {
+                        personas,
+                        scheduleMode,
+                        dailySchedule,
+                        weeklySchedule,
+                        theme,
+                        resetHour,
+                        exportDate: new Date().toISOString()
+                    };
+                    
+                    const jsonString = JSON.stringify(data, null, 2);
+                    
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(jsonString).then(() => {
+                            alert('✅ 백업 데이터가 클립보드에 복사되었습니다!\n\n메모장에 붙여넣어 .json 파일로 저장하세요.');
+                        }).catch(() => {
+                            fallbackCopy(jsonString);
+                        });
+                    } else {
+                        fallbackCopy(jsonString);
+                    }
+                } catch (error) {
+                    console.error('Copy failed:', error);
                     alert('복사에 실패했습니다.');
-                });
+                }
+            };
+            
+            const fallbackCopy = (text) => {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    alert('✅ 백업 데이터가 클립보드에 복사되었습니다!\n\n메모장에 붙여넣어 .json 파일로 저장하세요.');
+                } catch (err) {
+                    alert('복사에 실패했습니다.');
+                }
+                document.body.removeChild(textArea);
             };
 
             const importData = (e) => {
@@ -403,12 +546,14 @@
                     try {
                         const data = JSON.parse(event.target.result);
                         if (data.personas) setPersonas(data.personas);
-                        if (data.schedule) setSchedule(data.schedule);
+                        if (data.scheduleMode) setScheduleMode(data.scheduleMode);
+                        if (data.dailySchedule) setDailySchedule(data.dailySchedule);
+                        if (data.weeklySchedule) setWeeklySchedule(data.weeklySchedule);
                         if (data.theme) setTheme(data.theme);
                         if (data.resetHour !== undefined) setResetHour(data.resetHour);
-                        alert('데이터를 성공적으로 복구했습니다!');
+                        alert('✅ 데이터를 성공적으로 복구했습니다!');
                     } catch (error) {
-                        alert('파일을 읽는 중 오류가 발생했습니다.');
+                        alert('❌ 파일을 읽는 중 오류가 발생했습니다.');
                     }
                 };
                 reader.readAsText(file);
@@ -416,7 +561,8 @@
             };
 
             const getTodayStats = () => {
-                const scheduleWithEnd = getScheduleWithEndTimes();
+                const todaySchedule = getTodaySchedule();
+                const scheduleWithEnd = getScheduleWithEndTimes(todaySchedule);
                 const stats = {};
                 let total = 0;
                 
@@ -442,7 +588,8 @@
                 const outerRadius = size / 2 - 25;
                 const innerRadius = size / 3.5;
                 const currentSegment = getCurrentSegment();
-                const scheduleWithEnd = getScheduleWithEndTimes();
+                const todaySchedule = getTodaySchedule();
+                const scheduleWithEnd = getScheduleWithEndTimes(todaySchedule);
 
                 const elements = [];
 
@@ -528,6 +675,7 @@
             const current = getCurrentSegment();
             const hours = current ? Math.floor(current.remaining / 60) : 0;
             const minutes = current ? current.remaining % 60 : 0;
+            const todaySchedule = getTodaySchedule();
 
             return (
                 <div style={{ 
@@ -543,7 +691,7 @@
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                             <h1 style={{ fontSize: '20px', fontWeight: '600', margin: 0 }}>Persona Clock</h1>
                             <div style={{ display: 'flex', gap: '6px' }}>
-                                {schedule.length > 0 && (
+                                {todaySchedule.length > 0 && (
                                     <button 
                                         onClick={() => {
                                             setShowStats(!showStats);
@@ -637,7 +785,7 @@
                                     </div>
                                 )}
 
-                                {schedule.length === 0 && (
+                                {todaySchedule.length === 0 && (
                                     <div style={{ 
                                         background: currentTheme.cardBg, 
                                         padding: '25px', 
@@ -652,10 +800,10 @@
                                     </div>
                                 )}
 
-                                {schedule.length > 0 && (
+                                {todaySchedule.length > 0 && (
                                     <div style={{ marginTop: '15px' }}>
                                         <div style={{ fontSize: '13px', color: currentTheme.textMuted, marginBottom: '8px' }}>Today's Flow</div>
-                                        {getScheduleWithEndTimes().map((seg, i) => {
+                                        {getScheduleWithEndTimes(todaySchedule).map((seg, i) => {
                                             const persona = personas.find(p => p.name === seg.personaName);
                                             const color = persona?.color || '#6b7280';
                                             const isActive = current && seg.personaName === current.persona.name;
@@ -892,7 +1040,71 @@
 
                                 {activeTab === 'schedule' && (
                                     <div>
-                                        <h3 style={{ fontSize: '16px', marginBottom: '12px', marginTop: 0 }}>오늘 일정</h3>
+                                        <div style={{ marginBottom: '15px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                                                <h3 style={{ fontSize: '16px', margin: 0 }}>일정 관리</h3>
+                                                
+                                                {/* 토글 스위치 */}
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span style={{ fontSize: '12px', color: currentTheme.textMuted }}>매일 변경</span>
+                                                    <div 
+                                                        onClick={() => setScheduleMode(scheduleMode === 'daily' ? 'weekly' : 'daily')}
+                                                        style={{
+                                                            width: '44px',
+                                                            height: '24px',
+                                                            background: scheduleMode === 'weekly' ? '#6366f1' : currentTheme.border,
+                                                            borderRadius: '12px',
+                                                            padding: '2px',
+                                                            cursor: 'pointer',
+                                                            transition: 'background 0.3s ease',
+                                                            position: 'relative'
+                                                        }}
+                                                    >
+                                                        <div style={{
+                                                            width: '20px',
+                                                            height: '20px',
+                                                            background: '#fff',
+                                                            borderRadius: '50%',
+                                                            transition: 'transform 0.3s ease',
+                                                            transform: scheduleMode === 'weekly' ? 'translateX(20px)' : 'translateX(0)'
+                                                        }} />
+                                                    </div>
+                                                    <span style={{ fontSize: '12px', color: currentTheme.textMuted }}>고정</span>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* 일주일 고정 모드일 때 요일 선택 탭 */}
+                                            {scheduleMode === 'weekly' && (
+                                                <div style={{ 
+                                                    display: 'flex', 
+                                                    gap: '4px', 
+                                                    marginBottom: '12px',
+                                                    overflowX: 'auto',
+                                                    paddingBottom: '4px'
+                                                }}>
+                                                    {Object.keys(dayNames).map(day => (
+                                                        <button
+                                                            key={day}
+                                                            onClick={() => setSelectedDay(day)}
+                                                            style={{
+                                                                padding: '6px 12px',
+                                                                background: selectedDay === day ? '#6366f1' : currentTheme.cardBg,
+                                                                border: 'none',
+                                                                borderRadius: '6px',
+                                                                cursor: 'pointer',
+                                                                color: selectedDay === day ? '#fff' : currentTheme.text,
+                                                                fontSize: '13px',
+                                                                fontWeight: selectedDay === day ? '600' : 'normal',
+                                                                whiteSpace: 'nowrap'
+                                                            }}
+                                                        >
+                                                            {dayNames[day]}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
                                         <div style={{ 
                                             background: currentTheme.cardBg, 
                                             padding: '12px', 
@@ -1038,7 +1250,7 @@
                                         </div>
 
                                         <div>
-                                            {getScheduleWithEndTimes().map((seg, i) => {
+                                            {getScheduleWithEndTimes(getCurrentEditingSchedule()).map((seg, i) => {
                                                 const persona = personas.find(p => p.name === seg.personaName);
                                                 const color = persona?.color || '#6b7280';
                                                 
@@ -1099,37 +1311,39 @@
                                             })}
                                         </div>
 
-                                        <div style={{ marginTop: '25px' }}>
-                                            <h3 style={{ fontSize: '16px', marginBottom: '12px' }}>일정 리셋 시간</h3>
-                                            <div style={{ 
-                                                background: currentTheme.cardBg, 
-                                                padding: '12px', 
-                                                borderRadius: '8px'
-                                            }}>
-                                                <div style={{ fontSize: '12px', color: currentTheme.textMuted, marginBottom: '8px' }}>
-                                                    매일 이 시간에 일정표가 초기화됩니다
+                                        {scheduleMode === 'daily' && (
+                                            <div style={{ marginTop: '25px' }}>
+                                                <h3 style={{ fontSize: '16px', marginBottom: '12px' }}>일정 리셋 시간</h3>
+                                                <div style={{ 
+                                                    background: currentTheme.cardBg, 
+                                                    padding: '12px', 
+                                                    borderRadius: '8px'
+                                                }}>
+                                                    <div style={{ fontSize: '12px', color: currentTheme.textMuted, marginBottom: '8px' }}>
+                                                        매일 이 시간에 일정표가 초기화됩니다
+                                                    </div>
+                                                    <select
+                                                        value={resetHour}
+                                                        onChange={(e) => setResetHour(parseInt(e.target.value))}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '9px',
+                                                            background: currentTheme.cardBg,
+                                                            border: `1px solid ${currentTheme.border}`,
+                                                            borderRadius: '6px',
+                                                            color: currentTheme.text,
+                                                            fontSize: '14px'
+                                                        }}
+                                                    >
+                                                        {[...Array(24)].map((_, i) => (
+                                                            <option key={i} value={i} style={{ background: '#fff', color: '#000' }}>
+                                                                {String(i).padStart(2, '0')}:00 {i < 12 ? '오전' : '오후'}
+                                                            </option>
+                                                        ))}
+                                                    </select>
                                                 </div>
-                                                <select
-                                                    value={resetHour}
-                                                    onChange={(e) => setResetHour(parseInt(e.target.value))}
-                                                    style={{
-                                                        width: '100%',
-                                                        padding: '9px',
-                                                        background: currentTheme.cardBg,
-                                                        border: `1px solid ${currentTheme.border}`,
-                                                        borderRadius: '6px',
-                                                        color: currentTheme.text,
-                                                        fontSize: '14px'
-                                                    }}
-                                                >
-                                                    {[...Array(24)].map((_, i) => (
-                                                        <option key={i} value={i} style={{ background: '#fff', color: '#000' }}>
-                                                            {String(i).padStart(2, '0')}:00 {i < 12 ? '오전' : '오후'}
-                                                        </option>
-                                                    ))}
-                                                </select>
                                             </div>
-                                        </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -1177,12 +1391,11 @@
                                         }}>
                                             <h4 style={{ fontSize: '14px', marginBottom: '8px', marginTop: 0 }}>데이터 백업</h4>
                                             <p style={{ fontSize: '12px', color: currentTheme.textMuted, marginBottom: '12px', lineHeight: '1.5' }}>
-                                                현재 설정을 JSON 파일로 저장합니다.<br/>
-                                                다른 기기에서 복구하거나 백업용으로 사용하세요.
+                                                백업 데이터를 복사하거나 파일로 다운로드하세요.
                                             </p>
                                             <div style={{ display: 'flex', gap: '8px' }}>
                                                 <button
-                                                    onClick={exportData}
+                                                    onClick={copyBackupData}
                                                     style={{
                                                         flex: 1,
                                                         padding: '10px',
@@ -1192,27 +1405,34 @@
                                                         cursor: 'pointer',
                                                         color: '#fff',
                                                         fontWeight: '600',
-                                                        fontSize: '13px'
+                                                        fontSize: '13px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '6px'
                                                     }}
                                                 >
-                                                    📦 파일 다운로드
+                                                    <CopyIcon /> 복사
                                                 </button>
                                                 <button
-                                                    onClick={copyBackupData}
+                                                    onClick={exportData}
                                                     style={{
+                                                        flex: 1,
                                                         padding: '10px',
                                                         background: currentTheme.cardBg,
                                                         border: `1px solid ${currentTheme.border}`,
                                                         borderRadius: '6px',
                                                         cursor: 'pointer',
                                                         color: currentTheme.text,
+                                                        fontWeight: '600',
+                                                        fontSize: '13px',
                                                         display: 'flex',
                                                         alignItems: 'center',
-                                                        justifyContent: 'center'
+                                                        justifyContent: 'center',
+                                                        gap: '6px'
                                                     }}
-                                                    title="클립보드에 복사"
                                                 >
-                                                    <CopyIcon />
+                                                    <DownloadIcon /> 다운로드
                                                 </button>
                                             </div>
                                         </div>
@@ -1224,8 +1444,7 @@
                                         }}>
                                             <h4 style={{ fontSize: '14px', marginBottom: '8px', marginTop: 0 }}>데이터 복구</h4>
                                             <p style={{ fontSize: '12px', color: currentTheme.textMuted, marginBottom: '12px', lineHeight: '1.5' }}>
-                                                백업한 JSON 파일을 선택하여 데이터를 복구합니다.<br/>
-                                                현재 데이터는 덮어씌워집니다.
+                                                백업한 JSON 파일을 선택하여 데이터를 복구합니다.
                                             </p>
                                             <input
                                                 type="file"
@@ -1264,8 +1483,7 @@
                                             color: currentTheme.textMuted,
                                             lineHeight: '1.5'
                                         }}>
-                                            ⚠️ 백업 파일은 안전한 곳에 보관하세요.<br/>
-                                            복구 시 현재 데이터가 모두 교체됩니다.
+                                            ⚠️ 노션 임베드에서는 파일 다운로드가 제한될 수 있습니다. 복사 버튼을 사용해주세요.
                                         </div>
                                     </div>
                                 )}
